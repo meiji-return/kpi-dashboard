@@ -55,6 +55,20 @@
   .loading{text-align:center;padding:60px 0;font-size:13px;color:var(--text3);font-family:'DM Mono',monospace}
   .error{text-align:center;padding:40px 0;font-size:13px;color:var(--red)}
   .footer{text-align:center;font-size:11px;font-family:'DM Mono',monospace;color:var(--text3);padding-top:20px;border-top:1px solid var(--border)}
+  /* Modal CSS */
+  .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(15,23,42,0.6); z-index: 1000; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.2s; backdrop-filter: blur(2px); }
+  .modal-overlay.active { opacity: 1; pointer-events: auto; }
+  .modal-content { background: var(--bg2); width: 90%; max-width: 550px; border-radius: 12px; padding: 24px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1); position: relative; max-height: 80vh; display: flex; flex-direction: column; }
+  .modal-close { position: absolute; top: 16px; right: 16px; cursor: pointer; font-size: 20px; color: var(--text3); background: none; border: none; padding: 4px; line-height: 1; }
+  .modal-close:hover { color: var(--text); }
+  .modal-title { font-size: 15px; font-weight: 600; margin-bottom: 16px; color: var(--text); padding-right: 24px; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
+  .modal-body { overflow-y: auto; }
+  .sku-list { list-style: none; padding: 0; margin: 0; }
+  .sku-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px dashed var(--border); gap: 16px; }
+  .sku-item:last-child { border-bottom: none; }
+  .sku-rank { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text3); width: 20px; }
+  .sku-name { color: var(--text); font-weight: 500; font-size: 13px; flex: 1; line-height: 1.4; word-break: break-word; }
+  .sku-count { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--amber); background: rgba(217,119,6,0.1); padding: 4px 10px; border-radius: 20px; white-space: nowrap; font-weight: 500; }
   @media(max-width:640px){.cgrid2,.cgrid3{grid-template-columns:1fr}.kgrid{grid-template-columns:repeat(2,1fr)}}
 </style>
 </head>
@@ -155,7 +169,7 @@
 
   <p class="slabel">distribusi</p>
   <div class="cgrid3">
-    <div class="cbox"><p class="ctitle">Return per Kategori</p><div style="position:relative;height:200px"><canvas id="c5"></canvas></div></div>
+    <div class="cbox"><p class="ctitle">Return per Kategori <span style="font-size:10px;font-weight:normal;color:var(--text3)">(Klik bar untuk detail SKU)</span></p><div style="position:relative;height:200px"><canvas id="c5"></canvas></div></div>
     <div class="cbox"><p class="ctitle">Return per 3PL</p><div class="leg" id="leg6"></div><div style="position:relative;height:200px"><canvas id="c6"></canvas></div></div>
     <div class="cbox"><p class="ctitle">Return Type</p><div class="leg" id="leg7"></div><div style="position:relative;height:200px"><canvas id="c7"></canvas></div></div>
   </div>
@@ -173,6 +187,16 @@
   </div>
 
   <div class="footer" id="footerText">KPI Return &amp; Logistics · Supabase kpi-return-logistics</div>
+</div>
+
+<div id="skuModal" class="modal-overlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal-content">
+    <button class="modal-close" onclick="closeModal()">&times;</button>
+    <div class="modal-title" id="modalTitle">Top SKU Return</div>
+    <div class="modal-body">
+      <ul class="sku-list" id="modalList"></ul>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -424,7 +448,15 @@ function renderCharts(d){
 
   const cc={};d.forEach(r=>{if(r.category_1)cc[r.category_1]=(cc[r.category_1]||0)+1;});
   const cs=Object.entries(cc).sort((a,b)=>b[1]-a[1]).slice(0,8);
-  dc('c5');ch.c5=new Chart(document.getElementById('c5'),{type:'bar',plugins:[LP],data:{labels:cs.map(e=>e[0].length>14?e[0].substring(0,14)+'\u2026':e[0]),datasets:[{data:cs.map(e=>e[1]),backgroundColor:'rgba(217,119,6,.4)',borderColor:'#d97706',borderWidth:1,borderRadius:4}]},options:BO()});
+  const opt5=BO();
+  opt5.onClick=(e,els)=>{
+    if(els.length>0) showTopSKU(cs[els[0].index][0], d);
+  };
+  opt5.onHover=(e,els)=>{
+    e.native.target.style.cursor=els.length>0?'pointer':'default';
+  };
+  opt5.plugins.tooltip = { callbacks: { label: function(context) { return context.raw + ' items (Klik untuk detail SKU)'; } } };
+  dc('c5');ch.c5=new Chart(document.getElementById('c5'),{type:'bar',plugins:[LP],data:{labels:cs.map(e=>e[0].length>14?e[0].substring(0,14)+'\u2026':e[0]),datasets:[{label:'Return',data:cs.map(e=>e[1]),backgroundColor:'rgba(217,119,6,.4)',borderColor:'#d97706',borderWidth:1,borderRadius:4}]},options:opt5});
 
   const tp={};d.forEach(r=>{if(r.tpl)tp[r.tpl]=(tp[r.tpl]||0)+1;});
   const tl=Object.keys(tp),tv=Object.values(tp),ttot=tv.reduce((a,b)=>a+b,0);
@@ -468,6 +500,30 @@ function renderTable(d,s){
     </tr>`;
   }).join('');
   document.getElementById('tbl').innerHTML=rows||'<tr><td colspan="11" style="text-align:center;color:#52525b;padding:20px">Tidak ada data</td></tr>';
+}
+
+function showTopSKU(category, allFilteredData) {
+  const catData = allFilteredData.filter(r => r.category_1 === category);
+  const skuCount = {};
+  catData.forEach(r => {
+    const sku = r.product_name || 'Unknown SKU';
+    skuCount[sku] = (skuCount[sku] || 0) + 1;
+  });
+  const sortedSKU = Object.entries(skuCount).sort((a,b) => b[1] - a[1]).slice(0, 10);
+  document.getElementById('modalTitle').textContent = `Top 10 SKU Return: ${category}`;
+  const listHtml = sortedSKU.map((s, i) => `
+    <li class="sku-item">
+      <span class="sku-rank">#${i+1}</span>
+      <span class="sku-name">${s[0]}</span>
+      <span class="sku-count">${s[1]} return</span>
+    </li>
+  `).join('');
+  document.getElementById('modalList').innerHTML = listHtml || '<li class="sku-item"><span class="sku-name">Tidak ada data SKU</span></li>';
+  document.getElementById('skuModal').classList.add('active');
+}
+
+function closeModal() {
+  document.getElementById('skuModal').classList.remove('active');
 }
 
 async function init(){
