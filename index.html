@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KPI Return & Logistics Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  :root{--bg:#f8fafc;--bg2:#ffffff;--bg3:#f1f5f9;--border:#e2e8f0;--border2:#cbd5e1;--text:#0f172a;--text2:#475569;--text3:#64748b;--green:#16a34a;--red:#dc2626;--blue:#2563eb;--amber:#d97706;--purple:#9333ea;--cyan:#0891b2;}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding:28px 24px}
+  .header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:28px;flex-wrap:wrap;gap:12px}
+  .header h1{font-size:22px;font-weight:600;letter-spacing:-.02em;margin-bottom:4px}
+  .header p{font-size:13px;color:var(--text2)}
+  .live-badge{display:inline-flex;align-items:center;gap:6px;font-family:'DM Mono',monospace;font-size:11px;color:var(--green);background:rgba(22,163,74,.1);border:1px solid rgba(22,163,74,.2);border-radius:20px;padding:4px 12px;white-space:nowrap}
+  .live-dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:blink 2s infinite}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+  .filter-bar{display:flex;align-items:center;gap:10px;margin-bottom:24px;flex-wrap:wrap}
+  .filter-bar > label{font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.06em}
+  .ms-container{position:relative;display:inline-block;font-family:'DM Sans',sans-serif;font-size:13px;user-select:none}
+  .ms-btn{padding:7px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg3);color:var(--text);cursor:pointer;min-width:140px;display:flex;justify-content:space-between;align-items:center;transition:border-color .15s}
+  .ms-btn:hover{border-color:var(--border2)}
+  .ms-btn::after{content:"▼";font-size:10px;margin-left:8px;color:var(--text3)}
+  .ms-dropdown{position:absolute;top:100%;left:0;width:max-content;min-width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:8px;margin-top:4px;box-shadow:0 4px 6px -1px rgba(0,0,0,0.1);z-index:100;max-height:250px;overflow-y:auto;display:none;flex-direction:column;padding:4px 0}
+  .ms-dropdown.show{display:flex}
+  .ms-dropdown label{padding:8px 12px;display:flex;align-items:center;gap:8px;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;text-transform:none;letter-spacing:normal;color:var(--text);margin:0}
+  .ms-dropdown label:hover{background:var(--bg3)}
+  .ms-dropdown input[type="checkbox"]{cursor:pointer;width:14px;height:14px;accent-color:var(--blue)}
+  .slabel{font-family:'DM Mono',monospace;font-size:10px;color:var(--text3);letter-spacing:.1em;text-transform:uppercase;margin:0 0 12px}
+  .kgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:28px}
+  .kcard{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px;position:relative;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.05)}
+  .kcard::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;border-radius:12px 12px 0 0}
+  .kcard.green::before{background:var(--green)}.kcard.red::before{background:var(--red)}.kcard.blue::before{background:var(--blue)}.kcard.amber::before{background:var(--amber)}.kcard.purple::before{background:var(--purple)}.kcard.cyan::before{background:#0891b2}
+  .klbl{font-size:11px;color:var(--text2);margin-bottom:8px}
+  .kval{font-size:26px;font-weight:600;line-height:1;margin-bottom:4px;letter-spacing:-.02em}
+  .ksub{font-size:11px;font-family:'DM Mono',monospace}
+  .ksub.up{color:var(--red)}.ksub.dn{color:var(--green)}.ksub.neutral{color:var(--text3)}
+  .cgrid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+  .cgrid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:28px}
+  .cbox{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:18px;box-shadow:0 1px 3px rgba(0,0,0,0.05)}
+  .cbox.full{grid-column:1/-1}
+  .ctitle{font-size:13px;font-weight:500;color:var(--text);margin-bottom:14px}
+  .leg{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:10px;font-size:11px;color:var(--text2)}
+  .legdot{width:8px;height:8px;border-radius:2px;display:inline-block;margin-right:4px;vertical-align:middle}
+  .tbox{background:var(--bg2);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:24px;overflow-x:auto;box-shadow:0 1px 3px rgba(0,0,0,0.05)}
+  .ktbl{width:100%;border-collapse:collapse;font-size:12.5px}
+  .ktbl th{font-size:10px;font-family:'DM Mono',monospace;font-weight:500;color:var(--text3);text-align:left;padding:10px 14px;border-bottom:1px solid var(--border);text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;background:var(--bg3)}
+  .ktbl td{padding:10px 14px;border-bottom:1px solid var(--border);color:var(--text);white-space:nowrap}
+  .ktbl tr:last-child td{border-bottom:none}.ktbl tr:hover td{background:var(--bg3)}
+  .badge{display:inline-block;font-size:10px;font-family:'DM Mono',monospace;font-weight:500;padding:2px 8px;border-radius:4px}
+  .bok{background:rgba(34,197,94,.1);color:#4ade80;border:1px solid rgba(34,197,94,.2)}
+  .bwarn{background:rgba(245,158,11,.1);color:#fbbf24;border:1px solid rgba(245,158,11,.2)}
+  .bbad{background:rgba(239,68,68,.1);color:#f87171;border:1px solid rgba(239,68,68,.2)}
+  .loading{text-align:center;padding:60px 0;font-size:13px;color:var(--text3);font-family:'DM Mono',monospace}
+  .error{text-align:center;padding:40px 0;font-size:13px;color:var(--red)}
+  .footer{text-align:center;font-size:11px;font-family:'DM Mono',monospace;color:var(--text3);padding-top:20px;border-top:1px solid var(--border)}
+  @media(max-width:640px){.cgrid2,.cgrid3{grid-template-columns:1fr}.kgrid{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>📦 KPI Return &amp; Logistics</h1>
+    <p>Warehouse operations · <span id="periodeLabel">All periods</span> · <span id="recordCount" style="font-family:'DM Mono',monospace;font-size:11px;color:#52525b">loading...</span></p>
+  </div>
+  <div class="live-badge"><span class="live-dot"></span>Live · Supabase · kpi-return-logistics</div>
+</div>
+
+<div class="filter-bar">
+  <label>Bulan</label>
+  <div class="ms-container" id="bF">
+    <div class="ms-btn" onclick="toggleMS('bF')">Semua bulan</div>
+    <div class="ms-dropdown" id="bF_drop">
+      <label><input type="checkbox" value="all" onchange="handleMSAll('bF')" checked> Semua bulan</label>
+    </div>
+  </div>
+
+  <label>Gudang</label>
+  <div class="ms-container" id="wF">
+    <div class="ms-btn" onclick="toggleMS('wF')">Semua gudang</div>
+    <div class="ms-dropdown" id="wF_drop">
+      <label><input type="checkbox" value="all" onchange="handleMSAll('wF')" checked> Semua gudang</label>
+    </div>
+  </div>
+
+  <label>Kategori</label>
+  <div class="ms-container" id="cF">
+    <div class="ms-btn" onclick="toggleMS('cF')">Semua kategori</div>
+    <div class="ms-dropdown" id="cF_drop">
+      <label><input type="checkbox" value="all" onchange="handleMSAll('cF')" checked> Semua kategori</label>
+    </div>
+  </div>
+
+  <label>QC Result</label>
+  <div class="ms-container" id="qF">
+    <div class="ms-btn" onclick="toggleMS('qF')">Pass &amp; Fail</div>
+    <div class="ms-dropdown" id="qF_drop">
+      <label><input type="checkbox" value="all" onchange="handleMSAll('qF')" checked> Pass &amp; Fail</label>
+      <label><input type="checkbox" value="pass" onchange="handleMSChange('qF')"> Pass only</label>
+      <label><input type="checkbox" value="fail" onchange="handleMSChange('qF')"> Fail only</label>
+    </div>
+  </div>
+
+  <label>KPI Calc</label>
+  <div class="ms-container" id="kF">
+    <div class="ms-btn" onclick="toggleMS('kF')">Semua</div>
+    <div class="ms-dropdown" id="kF_drop">
+      <label><input type="checkbox" value="all" onchange="handleMSAll('kF')" checked> Semua</label>
+      <label><input type="checkbox" value="1" onchange="handleMSChange('kF')"> Hit KPI (1)</label>
+      <label><input type="checkbox" value="blank" onchange="handleMSChange('kF')"> Blank</label>
+    </div>
+  </div>
+</div>
+
+<div id="loadingMsg" class="loading">⏳ Mengambil data dari Supabase...</div>
+<div id="errorMsg" class="error" style="display:none"></div>
+
+<div id="dashContent" style="display:none">
+  <p class="slabel">ringkasan kpi</p>
+  <div class="kgrid" id="kgrid"></div>
+
+  <p class="slabel">shipped vs return</p>
+  <div class="cgrid2" style="margin-bottom:28px">
+    <div class="cbox full">
+      <p class="ctitle">Total Item Shipped vs Return per Bulan per Gudang</p>
+      <div class="leg">
+        <span><span class="legdot" style="background:#3b82f6"></span>Shipped</span>
+        <span><span class="legdot" style="background:#ef4444"></span>Return</span>
+      </div>
+      <div style="position:relative;height:280px"><canvas id="cShipped"></canvas></div>
+    </div>
+  </div>
+
+  <p class="slabel">analisis qc &amp; outcome</p>
+  <div class="cgrid2">
+    <div class="cbox">
+      <p class="ctitle">QC Result per Gudang</p>
+      <div class="leg"><span><span class="legdot" style="background:#22c55e"></span>Pass</span><span><span class="legdot" style="background:#ef4444"></span>Fail</span></div>
+      <div style="position:relative;height:210px"><canvas id="c1"></canvas></div>
+    </div>
+    <div class="cbox">
+      <p class="ctitle">QC Reason (Composition)</p>
+      <div class="leg" id="leg2"></div>
+      <div style="position:relative;height:210px"><canvas id="c2"></canvas></div>
+    </div>
+  </div>
+
+  <p class="slabel">breakdown reason</p>
+  <div class="cgrid2">
+    <div class="cbox"><p class="ctitle">Top QC Reason</p><div style="position:relative;height:230px"><canvas id="c3"></canvas></div></div>
+    <div class="cbox"><p class="ctitle">Customer Reason</p><div style="position:relative;height:230px"><canvas id="c4"></canvas></div></div>
+  </div>
+
+  <p class="slabel">distribusi</p>
+  <div class="cgrid3">
+    <div class="cbox"><p class="ctitle">Return per Kategori</p><div style="position:relative;height:200px"><canvas id="c5"></canvas></div></div>
+    <div class="cbox"><p class="ctitle">Return per 3PL</p><div class="leg" id="leg6"></div><div style="position:relative;height:200px"><canvas id="c6"></canvas></div></div>
+    <div class="cbox"><p class="ctitle">Return Type</p><div class="leg" id="leg7"></div><div style="position:relative;height:200px"><canvas id="c7"></canvas></div></div>
+  </div>
+
+  <p class="slabel">detail per gudang</p>
+  <div class="tbox">
+    <table class="ktbl">
+      <thead><tr>
+        <th>Gudang</th><th>Shipped</th><th>Return</th><th>Return Rate</th>
+        <th>Pass</th><th>Fail</th><th>Fail Rate</th>
+        <th>Top QC Reason</th><th>Scrap</th><th>RTW</th><th>Status</th>
+      </tr></thead>
+      <tbody id="tbl"></tbody>
+    </table>
+  </div>
+
+  <div class="footer" id="footerText">KPI Return &amp; Logistics · Supabase kpi-return-logistics</div>
+</div>
+
+<script>
+const OC_COL={scrap:'#dc2626',return_to_warehouse:'#16a34a',return_to_customer:'#2563eb'};
+const TPL_COL=['#2563eb','#16a34a','#d97706','#9333ea','#dc2626','#0891b2'];
+const WH_COLORS=['#2563eb','#16a34a','#d97706','#9333ea','#dc2626','#0891b2','#ea580c'];
+let ch={}, allReturns=[], allShipped=[];
+
+const LP={id:'LP',afterDatasetsDraw(chart){
+  const ctx=chart.ctx;ctx.save();
+  chart.data.datasets.forEach((ds,di)=>{
+    const meta=chart.getDatasetMeta(di);if(meta.hidden)return;
+    meta.data.forEach((el,i)=>{
+      const v=ds.data[i];if(!v||v<=0)return;
+      ctx.font='bold 11px DM Sans,sans-serif';
+      ctx.textAlign='center';ctx.textBaseline='middle';
+      const{x,y,base}=el.getProps(['x','y','base'],true);
+      const isH=chart.options.indexAxis==='y';
+      if(meta.type==='line'){
+        ctx.fillStyle=ds.borderColor||'#2563eb';ctx.textBaseline='bottom';
+        const txt=v>=1000000?(v/1000000).toFixed(1)+'M':v>=1000?(v/1000).toFixed(0)+'K':v;
+        ctx.fillText(txt,x,y-8);
+      }else if(isH){
+        ctx.fillStyle='#334155';
+        if((base-x)>18){ctx.fillText(v,x+(base-x)/2,y);}
+        else{ctx.textAlign='left';ctx.fillText(v,x+4,y);}
+      }else{
+        ctx.fillStyle='#334155';
+        const bh=Math.abs(base-y);
+        if(bh>16){ctx.fillText(v,x,y+bh/2);}
+        else{ctx.textBaseline='bottom';ctx.fillText(v,x,y-3);}
+      }
+    });
+  });ctx.restore();
+}};
+
+const DLP={id:'DLP',afterDatasetsDraw(chart){
+  const ctx=chart.ctx;ctx.save();
+  const ds=chart.data.datasets[0];
+  const tot=ds.data.reduce((a,b)=>a+b,0);
+  chart.getDatasetMeta(0).data.forEach((arc,i)=>{
+    const v=ds.data[i];const pct=Math.round(v/tot*100);if(pct<7)return;
+    const{x,y}=arc.tooltipPosition();
+    ctx.fillStyle='#fff';ctx.font='bold 12px DM Sans,sans-serif';
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(v,x,y-7);ctx.font='10px DM Sans,sans-serif';
+    ctx.fillText('('+pct+'%)',x,y+7);
+  });ctx.restore();
+}};
+
+const BO=(stacked=false)=>({responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{stacked,ticks:{color:'#64748b',font:{size:10}},grid:{color:'#e2e8f0'}},y:{stacked,ticks:{color:'#64748b',font:{size:10}},grid:{color:'#e2e8f0'}}}});
+
+function toggleMS(id){
+  const drop=document.getElementById(id+'_drop');
+  const isShow=drop.classList.contains('show');
+  document.querySelectorAll('.ms-dropdown').forEach(d=>d.classList.remove('show'));
+  if(!isShow)drop.classList.add('show');
+}
+document.addEventListener('click',e=>{
+  if(!e.target.closest('.ms-container')){
+    document.querySelectorAll('.ms-dropdown').forEach(d=>d.classList.remove('show'));
+  }
+});
+function handleMSAll(id){
+  const drop=document.getElementById(id+'_drop');
+  const allCb=drop.querySelector('input[value="all"]');
+  const cbs=drop.querySelectorAll('input:not([value="all"])');
+  if(allCb.checked){cbs.forEach(cb=>cb.checked=false);}
+  else{allCb.checked=true;}
+  updateMSBtn(id);applyFilters();
+}
+function handleMSChange(id){
+  const drop=document.getElementById(id+'_drop');
+  const allCb=drop.querySelector('input[value="all"]');
+  const cbs=Array.from(drop.querySelectorAll('input:not([value="all"])'));
+  const anyChecked=cbs.some(cb=>cb.checked);
+  if(anyChecked){allCb.checked=false;}
+  else{allCb.checked=true;}
+  updateMSBtn(id);applyFilters();
+}
+function updateMSBtn(id){
+  const drop=document.getElementById(id+'_drop');
+  const btn=document.getElementById(id).querySelector('.ms-btn');
+  const allCb=drop.querySelector('input[value="all"]');
+  const cbs=Array.from(drop.querySelectorAll('input:not([value="all"])')).filter(cb=>cb.checked);
+  if(allCb.checked){btn.textContent=allCb.parentElement.textContent.trim();}
+  else if(cbs.length===1){btn.textContent=cbs[0].parentElement.textContent.trim();}
+  else{btn.textContent=cbs.length+' dipilih';}
+}
+function getMSValues(id){
+  const drop=document.getElementById(id+'_drop');
+  const allCb=drop.querySelector('input[value="all"]');
+  if(allCb.checked)return['all'];
+  return Array.from(drop.querySelectorAll('input:not([value="all"])')).filter(cb=>cb.checked).map(cb=>cb.value);
+}
+
+function renderOptionsMS(id,options){
+  const drop=document.getElementById(id+'_drop');
+  options.forEach(opt=>{
+    const lbl=document.createElement('label');
+    lbl.innerHTML=`<input type="checkbox" value="${opt}" onchange="handleMSChange('${id}')"> ${opt}`;
+    drop.appendChild(lbl);
+  });
+}
+
+function populateFilters(returns){
+  const bulan=[...new Set(returns.map(r=>r.rts_month).filter(Boolean))].sort();
+  const whs=[...new Set(returns.map(r=>r.warehouse_origin).filter(Boolean))].sort();
+  const cats=[...new Set(returns.map(r=>r.category_1).filter(Boolean))].sort();
+  renderOptionsMS('bF',bulan);
+  renderOptionsMS('wF',whs);
+  renderOptionsMS('cF',cats);
+}
+
+function getFiltered(){
+  const b=getMSValues('bF'), w=getMSValues('wF'), c=getMSValues('cF'), q=getMSValues('qF'), k=getMSValues('kF');
+  const returns=allReturns.filter(r=>{
+    if(!b.includes('all')&&!b.includes(r.rts_month))return false;
+    if(!w.includes('all')&&!w.includes(r.warehouse_origin))return false;
+    if(!c.includes('all')&&!c.includes(r.category_1))return false;
+    if(!q.includes('all')&&!q.includes(r.qc_result))return false;
+    if(!k.includes('all')){
+      const passK=k.some(kv=>{
+        if(kv==='1'&&r.kpi_calculation==='1')return true;
+        if(kv==='blank'&&r.kpi_calculation!=='1')return true;
+        return false;
+      });
+      if(!passK)return false;
+    }
+    return true;
+  });
+  const shipped=allShipped.filter(r=>{
+    if(!b.includes('all')&&!b.includes(r.rts_month))return false;
+    if(!w.includes('all')&&!w.includes(r.warehouse_origin))return false;
+    return true;
+  });
+  return{returns,shipped};
+}
+
+function dc(k){if(ch[k]){ch[k].destroy();ch[k]=null;}}
+
+function applyFilters(){
+  const{returns:d,shipped:s}=getFiltered();
+  const b=getMSValues('bF');
+  document.getElementById('periodeLabel').textContent=b.includes('all')?'Semua periode':(b.length>2?b.length+' periode':b.join(', '));
+  document.getElementById('recordCount').textContent=d.length+' return records';
+  renderKPI(d,s);
+  renderShippedChart(d,s);
+  renderCharts(d);
+  renderTable(d,s);
+}
+
+function renderKPI(d,s){
+  const tot=d.length,pass=d.filter(r=>r.qc_result==='pass').length,fail=d.filter(r=>r.qc_result==='fail').length;
+  const scrap=d.filter(r=>r.logistic_closure_outcome==='scrap').length;
+  const rtw=d.filter(r=>r.logistic_closure_outcome==='return_to_warehouse').length;
+  const val=d.reduce((a,r)=>a+(parseFloat(r.price)||0),0);
+  const fr=tot>0?((fail/tot)*100).toFixed(1):0;
+  const totalShipped=s.reduce((a,r)=>a+(r.total_shipped||0),0);
+  const returnRate=totalShipped>0?((tot/totalShipped)*100).toFixed(2):'-';
+  const kpiHit=d.filter(r=>r.kpi_calculation==='1').length;
+
+  document.getElementById('kgrid').innerHTML=`
+    <div class="kcard blue"><p class="klbl">Total Shipped</p><p class="kval">${totalShipped>0?totalShipped.toLocaleString('id'):'-'}</p><p class="ksub neutral">items</p></div>
+    <div class="kcard red"><p class="klbl">Total Return</p><p class="kval">${tot}</p><p class="ksub up">Rate: ${returnRate}%</p></div>
+    <div class="kcard green"><p class="klbl">QC Pass</p><p class="kval">${pass}</p><p class="ksub dn">${tot>0?((pass/tot)*100).toFixed(1):0}%</p></div>
+    <div class="kcard red"><p class="klbl">QC Fail</p><p class="kval">${fail}</p><p class="ksub ${parseFloat(fr)>50?'up':'dn'}">${fr}%</p></div>
+    <div class="kcard amber"><p class="klbl">Scrap</p><p class="kval">${scrap}</p><p class="ksub up">${tot>0?((scrap/tot)*100).toFixed(1):0}%</p></div>
+    <div class="kcard purple"><p class="klbl">Hit KPI</p><p class="kval">${kpiHit}</p><p class="ksub neutral">${tot>0?((kpiHit/tot)*100).toFixed(1):0}%</p></div>`;
+}
+
+function renderShippedChart(returns,shipped){
+  dc('cShipped');
+  // Group by bulan+gudang
+  const months=[...new Set([
+    ...shipped.map(r=>r.rts_month),
+    ...returns.map(r=>r.rts_month)
+  ].filter(Boolean))].sort();
+  const whs=[...new Set([
+    ...shipped.map(r=>r.warehouse_origin),
+    ...returns.map(r=>r.warehouse_origin)
+  ].filter(Boolean))].sort();
+
+  // Build labels: bulan x gudang
+  const labels=[];
+  months.forEach(m=>{
+    whs.forEach(w=>{
+      labels.push(w.replace('LeL ID - ','').replace('Achoice ID - ','AC ').replace('AChoice ID - ','AC ')+'\n'+m);
+    });
+  });
+
+  const shippedVals=[], returnVals=[];
+  months.forEach(m=>{
+    whs.forEach(w=>{
+      const sv=shipped.find(r=>r.rts_month===m&&r.warehouse_origin===w);
+      const rv=returns.filter(r=>r.rts_month===m&&r.warehouse_origin===w).length;
+      shippedVals.push(sv?sv.total_shipped:0);
+      returnVals.push(rv);
+    });
+  });
+
+  ch.cShipped=new Chart(document.getElementById('cShipped'),{
+    type:'bar',
+    plugins:[LP],
+    data:{
+      labels,
+      datasets:[
+        {type:'line',label:'Shipped',data:shippedVals,backgroundColor:'rgba(37,99,235,.1)',borderColor:'#2563eb',borderWidth:2,tension:0.3,pointBackgroundColor:'#2563eb',yAxisID:'y'},
+        {label:'Return',data:returnVals,backgroundColor:'rgba(220,38,38,.5)',borderColor:'#dc2626',borderWidth:1,borderRadius:4,yAxisID:'y1'}
+      ]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:true,position:'top',labels:{color:'#64748b',font:{size:11},boxWidth:10,padding:12}}},
+      scales:{
+        x:{ticks:{color:'#64748b',font:{size:9},maxRotation:45},grid:{color:'#e2e8f0'}},
+        y:{type:'linear',position:'left',ticks:{color:'#2563eb',font:{size:10},callback:v=>v>=1000000?(v/1000000).toFixed(1)+'M':v>=1000?(v/1000).toFixed(0)+'K':v},grid:{color:'#e2e8f0'},title:{display:true,text:'Shipped',color:'#2563eb',font:{size:10}}},
+        y1:{type:'linear',position:'right',ticks:{color:'#dc2626',font:{size:10}},grid:{drawOnChartArea:false},title:{display:true,text:'Return',color:'#dc2626',font:{size:10}}}
+      }
+    }
+  });
+}
+
+function renderCharts(d){
+  const fw=[...new Set(d.map(r=>r.warehouse_origin).filter(Boolean))].sort();
+  dc('c1');ch.c1=new Chart(document.getElementById('c1'),{type:'bar',plugins:[LP],data:{labels:fw.map(w=>w.replace('LeL ID - ','').replace('Achoice ID - ','AC ').replace('AChoice ID - ','AC ')),datasets:[{label:'Pass',data:fw.map(w=>d.filter(r=>r.warehouse_origin===w&&r.qc_result==='pass').length),backgroundColor:'rgba(22,163,74,.4)',borderColor:'#16a34a',borderWidth:1,borderRadius:4},{label:'Fail',data:fw.map(w=>d.filter(r=>r.warehouse_origin===w&&r.qc_result==='fail').length),backgroundColor:'rgba(220,38,38,.4)',borderColor:'#dc2626',borderWidth:1,borderRadius:4}]},options:BO(true)});
+
+  const oc={};d.forEach(r=>{if(r.qc_reason){const rr=r.qc_reason.replace('Customer_','').replace('Seller_','Seller: ').replace('3PL_','3PL: ');oc[rr]=(oc[rr]||0)+1;}});
+  const osort=Object.entries(oc).sort((a,b)=>b[1]-a[1]);
+  let ol=[],ov=[];
+  if(osort.length>5){
+    ol=osort.slice(0,4).map(e=>e[0]);ov=osort.slice(0,4).map(e=>e[1]);
+    ol.push('Other');ov.push(osort.slice(4).reduce((sum,e)=>sum+e[1],0));
+  }else{
+    ol=osort.map(e=>e[0]);ov=osort.map(e=>e[1]);
+  }
+  const otot=ov.reduce((a,b)=>a+b,0);
+  const ocols=ol.map((_,i)=>['#2563eb','#16a34a','#d97706','#9333ea','#dc2626','#0891b2'][i%6]);
+  document.getElementById('leg2').innerHTML=ol.map((l,i)=>`<span style="margin-right:8px"><span class="legdot" style="background:${ocols[i]}"></span>${l.length>15?l.substring(0,15)+'...':l} ${otot>0?Math.round(ov[i]/otot*100):0}%</span>`).join('');
+  dc('c2');ch.c2=new Chart(document.getElementById('c2'),{type:'doughnut',plugins:[DLP],data:{labels:ol,datasets:[{data:ov,backgroundColor:ocols.map(c=>c+'44'),borderColor:ocols,borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,cutout:'62%',plugins:{legend:{display:false}}}});
+
+  const rr={};d.forEach(r=>{if(r.qc_reason)rr[r.qc_reason]=(rr[r.qc_reason]||0)+1;});
+  const rs=Object.entries(rr).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  dc('c3');ch.c3=new Chart(document.getElementById('c3'),{type:'bar',plugins:[LP],data:{labels:rs.map(e=>e[0].replace('Customer_','').replace('Seller_','Seller: ').replace('3PL_','3PL: ')),datasets:[{data:rs.map(e=>e[1]),backgroundColor:'rgba(37,99,235,.4)',borderColor:'#2563eb',borderWidth:1,borderRadius:4}]},options:{...BO(),indexAxis:'y'}});
+
+  const cre={};d.forEach(r=>{if(r.customer_reason&&r.customer_reason!=='-')cre[r.customer_reason]=(cre[r.customer_reason]||0)+1;});
+  const crs=Object.entries(cre).sort((a,b)=>b[1]-a[1]);
+  dc('c4');ch.c4=new Chart(document.getElementById('c4'),{type:'bar',plugins:[LP],data:{labels:crs.map(e=>e[0].replace('packing_physically_damaged','packing dmg').replace('item_physically_damaged','phys dmg').replace('item_does_not_work','not working').replace('received_wrong_item','wrong item').replace('do_not_want','dont want')),datasets:[{data:crs.map(e=>e[1]),backgroundColor:'rgba(147,51,234,.4)',borderColor:'#9333ea',borderWidth:1,borderRadius:4}]},options:{...BO(),indexAxis:'y'}});
+
+  const cc={};d.forEach(r=>{if(r.category_1)cc[r.category_1]=(cc[r.category_1]||0)+1;});
+  const cs=Object.entries(cc).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  dc('c5');ch.c5=new Chart(document.getElementById('c5'),{type:'bar',plugins:[LP],data:{labels:cs.map(e=>e[0].length>14?e[0].substring(0,14)+'\u2026':e[0]),datasets:[{data:cs.map(e=>e[1]),backgroundColor:'rgba(217,119,6,.4)',borderColor:'#d97706',borderWidth:1,borderRadius:4}]},options:BO()});
+
+  const tp={};d.forEach(r=>{if(r.tpl)tp[r.tpl]=(tp[r.tpl]||0)+1;});
+  const tl=Object.keys(tp),tv=Object.values(tp),ttot=tv.reduce((a,b)=>a+b,0);
+  const tcols=tl.map((_,i)=>TPL_COL[i%TPL_COL.length]);
+  document.getElementById('leg6').innerHTML=tl.map((l,i)=>`<span><span class="legdot" style="background:${tcols[i]}"></span>${l} ${Math.round(tv[i]/ttot*100)}%</span>`).join('');
+  dc('c6');ch.c6=new Chart(document.getElementById('c6'),{type:'doughnut',plugins:[DLP],data:{labels:tl,datasets:[{data:tv,backgroundColor:tcols.map(c=>c+'44'),borderColor:tcols,borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,cutout:'62%',plugins:{legend:{display:false}}}});
+
+  const rt={};d.forEach(r=>{if(r.return_type)rt[r.return_type]=(rt[r.return_type]||0)+1;});
+  const rtl=Object.keys(rt),rtv=Object.values(rt),rttot=rtv.reduce((a,b)=>a+b,0);
+  const rtcols=['#0891b2','#d97706','#9333ea'];
+  document.getElementById('leg7').innerHTML=rtl.map((l,i)=>`<span><span class="legdot" style="background:${rtcols[i%rtcols.length]}"></span>${l} ${Math.round(rtv[i]/rttot*100)}%</span>`).join('');
+  dc('c7');ch.c7=new Chart(document.getElementById('c7'),{type:'doughnut',plugins:[DLP],data:{labels:rtl,datasets:[{data:rtv,backgroundColor:rtcols.map(c=>c+'44'),borderColor:rtcols,borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,cutout:'62%',plugins:{legend:{display:false}}}});
+}
+
+function renderTable(d,s){
+  const fw=[...new Set(d.map(r=>r.warehouse_origin).filter(Boolean))].sort();
+  const rows=fw.map(wh=>{
+    const wd=d.filter(r=>r.warehouse_origin===wh);
+    const t=wd.length,f=wd.filter(r=>r.qc_result==='fail').length,p=wd.filter(r=>r.qc_result==='pass').length;
+    const sc=wd.filter(r=>r.logistic_closure_outcome==='scrap').length;
+    const rw=wd.filter(r=>r.logistic_closure_outcome==='return_to_warehouse').length;
+    const fr2=t>0?((f/t)*100).toFixed(1):0;
+    const shippedRow=s.filter(r=>r.warehouse_origin===wh).reduce((a,r)=>a+(r.total_shipped||0),0);
+    const retRate=shippedRow>0?((t/shippedRow)*100).toFixed(2)+'%':'-';
+    const rr2={};wd.forEach(r=>{if(r.qc_reason)rr2[r.qc_reason]=(rr2[r.qc_reason]||0)+1;});
+    const top=Object.entries(rr2).sort((a,b)=>b[1]-a[1])[0];
+    const ts=top?top[0].replace('Customer_','').replace('Seller_','').replace('3PL_','3PL: ').replace('WH_','WH: '):'-';
+    const b=parseFloat(fr2)>60?'<span class="badge bbad">Tinggi</span>':parseFloat(fr2)>40?'<span class="badge bwarn">Waspada</span>':'<span class="badge bok">Normal</span>';
+    return `<tr>
+      <td style="font-weight:500">${wh}</td>
+      <td style="font-family:'DM Mono',monospace">${shippedRow>0?shippedRow.toLocaleString('id'):'-'}</td>
+      <td style="color:#dc2626">${t}</td>
+      <td style="font-family:'DM Mono',monospace;color:#d97706">${retRate}</td>
+      <td style="color:#16a34a">${p}</td>
+      <td style="color:#dc2626">${f}</td>
+      <td style="font-family:'DM Mono',monospace">${fr2}%</td>
+      <td style="color:#64748b">${ts}</td>
+      <td style="color:#dc2626">${sc}</td>
+      <td style="color:#16a34a">${rw}</td>
+      <td>${b}</td>
+    </tr>`;
+  }).join('');
+  document.getElementById('tbl').innerHTML=rows||'<tr><td colspan="11" style="text-align:center;color:#52525b;padding:20px">Tidak ada data</td></tr>';
+}
+
+async function init(){
+  try{
+    const res=await fetch('/.netlify/functions/get-data');
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    const json=await res.json();
+    if(json.error)throw new Error(json.error);
+    allReturns=json.returns||[];
+    allShipped=json.shipped||[];
+    document.getElementById('loadingMsg').style.display='none';
+    document.getElementById('dashContent').style.display='block';
+    populateFilters(allReturns);
+    applyFilters();
+    document.getElementById('footerText').textContent='KPI Return & Logistics · Supabase kpi-return-logistics · '+allReturns.length+' return records · '+new Date().toLocaleString('id-ID');
+  }catch(e){
+    document.getElementById('loadingMsg').style.display='none';
+    document.getElementById('errorMsg').style.display='block';
+    document.getElementById('errorMsg').textContent='Gagal load data: '+e.message;
+  }
+}
+
+init();
+</script>
+</body>
+</html>
