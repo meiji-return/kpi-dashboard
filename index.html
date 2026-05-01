@@ -528,12 +528,26 @@ function closeModal() {
 
 async function init(){
   try{
-    const res=await fetch('https://meudxtisadvhmjvmrbkj.supabase.co/functions/v1/return-data');
-    if(!res.ok)throw new Error('HTTP '+res.status);
-    const json=await res.json();
-    if(json.error)throw new Error(json.error);
-    allReturns=json.returns||[];
-    allShipped=json.shipped||[];
+    document.getElementById('loadingMsg').textContent = '⏳ Mengambil data lengkap dari Supabase...';
+    
+    // Menggunakan REST API langsung karena Edge Function tidak me-return 'product_name'
+    const sbUrl = 'https://meudxtisadvhmjvmrbkj.supabase.co';
+    const sbKey = 'sb_secret_8Tn1oeFzH3GyUCMvp28iWw_pnWvoPFa'; // WARNING: Service Key digunakan untuk local dashboard
+    
+    const [resRet, resShip] = await Promise.all([
+      fetch(`${sbUrl}/rest/v1/return_data?select=*`, { headers: { apikey: sbKey, Authorization: `Bearer ${sbKey}` } }),
+      fetch(`${sbUrl}/rest/v1/shipped_data?select=*`, { headers: { apikey: sbKey, Authorization: `Bearer ${sbKey}` } })
+    ]);
+
+    if(!resRet.ok)throw new Error('HTTP Return Data '+resRet.status);
+    if(!resShip.ok)throw new Error('HTTP Shipped Data '+resShip.status);
+
+    const returnsData = await resRet.json();
+    const shippedData = await resShip.json();
+
+    allReturns = returnsData || [];
+    allShipped = shippedData || [];
+
     document.getElementById('loadingMsg').style.display='none';
     document.getElementById('dashContent').style.display='block';
     populateFilters(allReturns);
