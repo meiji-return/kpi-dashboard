@@ -472,7 +472,7 @@ function renderTable(d,s){
 
 async function init(){
   try{
-    const res=await fetch('/.netlify/functions/get-data');
+    const res=await fetch('https://meudxtisadvhmjvmrbkj.supabase.co/functions/v1/return-data');
     if(!res.ok)throw new Error('HTTP '+res.status);
     const json=await res.json();
     if(json.error)throw new Error(json.error);
