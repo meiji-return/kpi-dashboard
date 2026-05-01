@@ -530,13 +530,13 @@ async function init(){
   try{
     document.getElementById('loadingMsg').textContent = '⏳ Mengambil data lengkap dari Supabase...';
     
-    // Menggunakan REST API langsung karena Edge Function tidak me-return 'product_name'
+    // Menggunakan REST API langsung dengan Anon Key agar 'product_name' ikut terambil (Edge Function tidak menyertakannya)
     const sbUrl = 'https://meudxtisadvhmjvmrbkj.supabase.co';
-    const sbKey = 'sb_secret_8Tn1oeFzH3GyUCMvp28iWw_pnWvoPFa'; // WARNING: Service Key digunakan untuk local dashboard
+    const anonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1ldWR4dGlzYWR2aG1qdm1yYmtqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcyNzk5MjQsImV4cCI6MjA5Mjg1NTkyNH0.S5WNbo-ynik49PhhK1J9ixvut-p62XdJTPgL60OZkVc';
     
     const [resRet, resShip] = await Promise.all([
-      fetch(`${sbUrl}/rest/v1/return_data?select=*`, { headers: { apikey: sbKey, Authorization: `Bearer ${sbKey}` } }),
-      fetch(`${sbUrl}/rest/v1/shipped_data?select=*`, { headers: { apikey: sbKey, Authorization: `Bearer ${sbKey}` } })
+      fetch(`${sbUrl}/rest/v1/return_data?select=*`, { headers: { apikey: anonKey, Authorization: `Bearer ${anonKey}` } }),
+      fetch(`${sbUrl}/rest/v1/shipped_data?select=*`, { headers: { apikey: anonKey, Authorization: `Bearer ${anonKey}` } })
     ]);
 
     if(!resRet.ok)throw new Error('HTTP Return Data '+resRet.status);
