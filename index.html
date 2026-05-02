@@ -138,7 +138,15 @@
   <p class="slabel">shipped vs return</p>
   <div class="cgrid2" style="margin-bottom:28px">
     <div class="cbox full">
-      <p class="ctitle">Total Item Shipped vs Return per Bulan per Gudang</p>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px">
+        <p class="ctitle" style="margin-bottom:0">Total Item Shipped vs Return per Bulan per Gudang</p>
+        <div class="ms-container" id="bFShipped">
+          <div class="ms-btn" style="padding:5px 10px; min-width:130px; font-size:12px" onclick="toggleMS('bFShipped')">Semua bulan</div>
+          <div class="ms-dropdown" id="bFShipped_drop" style="right:0; left:auto">
+            <label><input type="checkbox" value="all" onchange="handleMSAll('bFShipped')" checked> Semua bulan</label>
+          </div>
+        </div>
+      </div>
       <div class="leg">
         <span><span class="legdot" style="background:#3b82f6"></span>Shipped</span>
         <span><span class="legdot" style="background:#ef4444"></span>Return</span>
@@ -163,7 +171,18 @@
 
   <p class="slabel">breakdown reason</p>
   <div class="cgrid2">
-    <div class="cbox"><p class="ctitle">Top QC Reason</p><div style="position:relative;height:230px"><canvas id="c3"></canvas></div></div>
+    <div class="cbox">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px">
+        <p class="ctitle" style="margin-bottom:0">Top QC Reason</p>
+        <div class="ms-container" id="bFQC">
+          <div class="ms-btn" style="padding:5px 10px; min-width:130px; font-size:12px" onclick="toggleMS('bFQC')">Semua bulan</div>
+          <div class="ms-dropdown" id="bFQC_drop" style="right:0; left:auto">
+            <label><input type="checkbox" value="all" onchange="handleMSAll('bFQC')" checked> Semua bulan</label>
+          </div>
+        </div>
+      </div>
+      <div style="position:relative;height:230px"><canvas id="c3"></canvas></div>
+    </div>
     <div class="cbox"><p class="ctitle">Customer Reason</p><div style="position:relative;height:230px"><canvas id="c4"></canvas></div></div>
   </div>
 
@@ -309,10 +328,12 @@ function populateFilters(returns){
   renderOptionsMS('bF',bulan);
   renderOptionsMS('wF',whs);
   renderOptionsMS('cF',cats);
+  renderOptionsMS('bFShipped',bulan);
+  renderOptionsMS('bFQC',bulan);
 }
 
-function getFiltered(){
-  const b=getMSValues('bF'), w=getMSValues('wF'), c=getMSValues('cF'), q=getMSValues('qF'), k=getMSValues('kF');
+function filterDataByBulan(bulanId){
+  const b=getMSValues(bulanId), w=getMSValues('wF'), c=getMSValues('cF'), q=getMSValues('qF'), k=getMSValues('kF');
   const returns=allReturns.filter(r=>{
     if(!b.includes('all')&&!b.includes(r.rts_month))return false;
     if(!w.includes('all')&&!w.includes(r.warehouse_origin))return false;
@@ -336,6 +357,10 @@ function getFiltered(){
   return{returns,shipped};
 }
 
+function getFiltered(){
+  return filterDataByBulan('bF');
+}
+
 function dc(k){if(ch[k]){ch[k].destroy();ch[k]=null;}}
 
 function applyFilters(){
@@ -344,8 +369,13 @@ function applyFilters(){
   document.getElementById('periodeLabel').textContent=b.includes('all')?'Semua periode':(b.length>2?b.length+' periode':b.join(', '));
   document.getElementById('recordCount').textContent=d.length+' return records';
   renderKPI(d,s);
-  renderShippedChart(d,s);
-  renderCharts(d);
+  
+  const {returns: dShipped, shipped: sShipped} = filterDataByBulan('bFShipped');
+  renderShippedChart(dShipped,sShipped);
+  
+  const {returns: dQC} = filterDataByBulan('bFQC');
+  renderCharts(d, dQC);
+  
   renderTable(d,s);
 }
 
@@ -420,7 +450,7 @@ function renderShippedChart(returns,shipped){
   });
 }
 
-function renderCharts(d){
+function renderCharts(d, dQC){
   const fw=[...new Set(d.map(r=>r.warehouse_origin).filter(Boolean))].sort();
   // dc('c1');ch.c1=new Chart(document.getElementById('c1'),{type:'bar',plugins:[LP],data:{labels:fw.map(w=>w.replace('LeL ID - ','').replace('Achoice ID - ','AC ').replace('AChoice ID - ','AC ')),datasets:[{label:'Pass',data:fw.map(w=>d.filter(r=>r.warehouse_origin===w&&r.qc_result==='pass').length),backgroundColor:'rgba(22,163,74,.4)',borderColor:'#16a34a',borderWidth:1,borderRadius:4},{label:'Fail',data:fw.map(w=>d.filter(r=>r.warehouse_origin===w&&r.qc_result==='fail').length),backgroundColor:'rgba(220,38,38,.4)',borderColor:'#dc2626',borderWidth:1,borderRadius:4}]},options:BO(true)});
 
@@ -438,7 +468,7 @@ function renderCharts(d){
   document.getElementById('leg2').innerHTML=ol.map((l,i)=>`<span style="margin-right:8px"><span class="legdot" style="background:${ocols[i]}"></span>${l.length>15?l.substring(0,15)+'...':l} ${otot>0?Math.round(ov[i]/otot*100):0}%</span>`).join('');
   dc('c2');ch.c2=new Chart(document.getElementById('c2'),{type:'doughnut',plugins:[DLP],data:{labels:ol,datasets:[{data:ov,backgroundColor:ocols.map(c=>c+'44'),borderColor:ocols,borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,cutout:'62%',plugins:{legend:{display:false}}}});
 
-  const rr={};d.forEach(r=>{if(r.qc_reason)rr[r.qc_reason]=(rr[r.qc_reason]||0)+1;});
+  const rr={};dQC.forEach(r=>{if(r.qc_reason)rr[r.qc_reason]=(rr[r.qc_reason]||0)+1;});
   const rs=Object.entries(rr).sort((a,b)=>b[1]-a[1]).slice(0,8);
   dc('c3');ch.c3=new Chart(document.getElementById('c3'),{type:'bar',plugins:[LP],data:{labels:rs.map(e=>e[0].replace('Customer_','').replace('Seller_','Seller: ').replace('3PL_','3PL: ')),datasets:[{data:rs.map(e=>e[1]),backgroundColor:'rgba(37,99,235,.4)',borderColor:'#2563eb',borderWidth:1,borderRadius:4}]},options:{...BO(),indexAxis:'y'}});
 
