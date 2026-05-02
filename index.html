@@ -149,11 +149,11 @@
 
   <p class="slabel">analisis qc &amp; outcome</p>
   <div class="cgrid2">
-    <div class="cbox">
+    <!-- <div class="cbox">
       <p class="ctitle">QC Result per Gudang</p>
       <div class="leg"><span><span class="legdot" style="background:#22c55e"></span>Pass</span><span><span class="legdot" style="background:#ef4444"></span>Fail</span></div>
       <div style="position:relative;height:210px"><canvas id="c1"></canvas></div>
-    </div>
+    </div> -->
     <div class="cbox">
       <p class="ctitle">QC Reason (Composition)</p>
       <div class="leg" id="leg2"></div>
@@ -362,9 +362,9 @@ function renderKPI(d,s){
   document.getElementById('kgrid').innerHTML=`
     <div class="kcard blue"><p class="klbl">Total Shipped</p><p class="kval">${totalShipped>0?totalShipped.toLocaleString('id'):'-'}</p><p class="ksub neutral">items</p></div>
     <div class="kcard red"><p class="klbl">Total Return</p><p class="kval">${tot}</p><p class="ksub up">Rate: ${returnRate}%</p></div>
-    <div class="kcard green"><p class="klbl">QC Pass</p><p class="kval">${pass}</p><p class="ksub dn">${tot>0?((pass/tot)*100).toFixed(1):0}%</p></div>
+    <!-- <div class="kcard green"><p class="klbl">QC Pass</p><p class="kval">${pass}</p><p class="ksub dn">${tot>0?((pass/tot)*100).toFixed(1):0}%</p></div>
     <div class="kcard red"><p class="klbl">QC Fail</p><p class="kval">${fail}</p><p class="ksub ${parseFloat(fr)>50?'up':'dn'}">${fr}%</p></div>
-    <div class="kcard amber"><p class="klbl">Scrap</p><p class="kval">${scrap}</p><p class="ksub up">${tot>0?((scrap/tot)*100).toFixed(1):0}%</p></div>
+    <div class="kcard amber"><p class="klbl">Scrap</p><p class="kval">${scrap}</p><p class="ksub up">${tot>0?((scrap/tot)*100).toFixed(1):0}%</p></div> -->
     <div class="kcard purple"><p class="klbl">Hit KPI</p><p class="kval">${kpiHit}</p><p class="ksub neutral">${tot>0?((kpiHit/tot)*100).toFixed(1):0}%</p></div>`;
 }
 
@@ -422,7 +422,7 @@ function renderShippedChart(returns,shipped){
 
 function renderCharts(d){
   const fw=[...new Set(d.map(r=>r.warehouse_origin).filter(Boolean))].sort();
-  dc('c1');ch.c1=new Chart(document.getElementById('c1'),{type:'bar',plugins:[LP],data:{labels:fw.map(w=>w.replace('LeL ID - ','').replace('Achoice ID - ','AC ').replace('AChoice ID - ','AC ')),datasets:[{label:'Pass',data:fw.map(w=>d.filter(r=>r.warehouse_origin===w&&r.qc_result==='pass').length),backgroundColor:'rgba(22,163,74,.4)',borderColor:'#16a34a',borderWidth:1,borderRadius:4},{label:'Fail',data:fw.map(w=>d.filter(r=>r.warehouse_origin===w&&r.qc_result==='fail').length),backgroundColor:'rgba(220,38,38,.4)',borderColor:'#dc2626',borderWidth:1,borderRadius:4}]},options:BO(true)});
+  // dc('c1');ch.c1=new Chart(document.getElementById('c1'),{type:'bar',plugins:[LP],data:{labels:fw.map(w=>w.replace('LeL ID - ','').replace('Achoice ID - ','AC ').replace('AChoice ID - ','AC ')),datasets:[{label:'Pass',data:fw.map(w=>d.filter(r=>r.warehouse_origin===w&&r.qc_result==='pass').length),backgroundColor:'rgba(22,163,74,.4)',borderColor:'#16a34a',borderWidth:1,borderRadius:4},{label:'Fail',data:fw.map(w=>d.filter(r=>r.warehouse_origin===w&&r.qc_result==='fail').length),backgroundColor:'rgba(220,38,38,.4)',borderColor:'#dc2626',borderWidth:1,borderRadius:4}]},options:BO(true)});
 
   const oc={};d.forEach(r=>{if(r.qc_reason){const rr=r.qc_reason.replace('Customer_','').replace('Seller_','Seller: ').replace('3PL_','3PL: ');oc[rr]=(oc[rr]||0)+1;}});
   const osort=Object.entries(oc).sort((a,b)=>b[1]-a[1]);
