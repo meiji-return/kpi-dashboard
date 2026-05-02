@@ -188,7 +188,18 @@
 
   <p class="slabel">distribusi</p>
   <div class="cgrid3">
-    <div class="cbox"><p class="ctitle">Return per Kategori <span style="font-size:10px;font-weight:normal;color:var(--text3)">(Klik bar untuk detail SKU)</span></p><div style="position:relative;height:200px"><canvas id="c5"></canvas></div></div>
+    <div class="cbox">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:14px; flex-direction:column; gap:8px;">
+        <p class="ctitle" style="margin-bottom:0">Return per Kategori <span style="font-size:10px;font-weight:normal;color:var(--text3)">(Klik bar untuk detail SKU)</span></p>
+        <div class="ms-container" id="qFKategori">
+          <div class="ms-btn" style="padding:5px 10px; min-width:130px; font-size:12px" onclick="toggleMS('qFKategori')">Semua QC Reason</div>
+          <div class="ms-dropdown" id="qFKategori_drop" style="left:0; right:auto; max-height:200px; overflow-y:auto;">
+            <label><input type="checkbox" value="all" onchange="handleMSAll('qFKategori')" checked> Semua QC Reason</label>
+          </div>
+        </div>
+      </div>
+      <div style="position:relative;height:200px"><canvas id="c5"></canvas></div>
+    </div>
     <div class="cbox"><p class="ctitle">Return per 3PL</p><div class="leg" id="leg6"></div><div style="position:relative;height:200px"><canvas id="c6"></canvas></div></div>
     <div class="cbox"><p class="ctitle">Return Type</p><div class="leg" id="leg7"></div><div style="position:relative;height:200px"><canvas id="c7"></canvas></div></div>
   </div>
@@ -325,11 +336,13 @@ function populateFilters(returns){
   const bulan=[...new Set(returns.map(r=>r.rts_month).filter(Boolean))].sort();
   const whs=[...new Set(returns.map(r=>r.warehouse_origin).filter(Boolean))].sort();
   const cats=[...new Set(returns.map(r=>r.category_1).filter(Boolean))].sort();
+  const qcReasons=[...new Set(returns.map(r=>r.qc_reason).filter(Boolean))].sort();
   renderOptionsMS('bF',bulan);
   renderOptionsMS('wF',whs);
   renderOptionsMS('cF',cats);
   renderOptionsMS('bFShipped',bulan);
   renderOptionsMS('bFQC',bulan);
+  renderOptionsMS('qFKategori',qcReasons);
 }
 
 function filterDataByBulan(bulanId){
@@ -374,7 +387,14 @@ function applyFilters(){
   renderShippedChart(dShipped,sShipped);
   
   const {returns: dQC} = filterDataByBulan('bFQC');
-  renderCharts(d, dQC);
+  
+  const qK = getMSValues('qFKategori');
+  let dKategori = d;
+  if (!qK.includes('all')) {
+    dKategori = d.filter(r => qK.includes(r.qc_reason));
+  }
+  
+  renderCharts(d, dQC, dKategori);
   
   renderTable(d,s);
 }
@@ -450,7 +470,7 @@ function renderShippedChart(returns,shipped){
   });
 }
 
-function renderCharts(d, dQC){
+function renderCharts(d, dQC, dKategori){
   const fw=[...new Set(d.map(r=>r.warehouse_origin).filter(Boolean))].sort();
   // dc('c1');ch.c1=new Chart(document.getElementById('c1'),{type:'bar',plugins:[LP],data:{labels:fw.map(w=>w.replace('LeL ID - ','').replace('Achoice ID - ','AC ').replace('AChoice ID - ','AC ')),datasets:[{label:'Pass',data:fw.map(w=>d.filter(r=>r.warehouse_origin===w&&r.qc_result==='pass').length),backgroundColor:'rgba(22,163,74,.4)',borderColor:'#16a34a',borderWidth:1,borderRadius:4},{label:'Fail',data:fw.map(w=>d.filter(r=>r.warehouse_origin===w&&r.qc_result==='fail').length),backgroundColor:'rgba(220,38,38,.4)',borderColor:'#dc2626',borderWidth:1,borderRadius:4}]},options:BO(true)});
 
@@ -493,11 +513,11 @@ function renderCharts(d, dQC){
   const crs=Object.entries(cre).sort((a,b)=>b[1]-a[1]);
   dc('c4');ch.c4=new Chart(document.getElementById('c4'),{type:'bar',plugins:[LP],data:{labels:crs.map(e=>e[0].replace('packing_physically_damaged','packing dmg').replace('item_physically_damaged','phys dmg').replace('item_does_not_work','not working').replace('received_wrong_item','wrong item').replace('do_not_want','dont want')),datasets:[{data:crs.map(e=>e[1]),backgroundColor:'rgba(147,51,234,.4)',borderColor:'#9333ea',borderWidth:1,borderRadius:4}]},options:{...BO(),indexAxis:'y'}});
 
-  const cc={};d.forEach(r=>{if(r.category_1)cc[r.category_1]=(cc[r.category_1]||0)+1;});
+  const cc={};dKategori.forEach(r=>{if(r.category_1)cc[r.category_1]=(cc[r.category_1]||0)+1;});
   const cs=Object.entries(cc).sort((a,b)=>b[1]-a[1]).slice(0,8);
   const opt5=BO();
   opt5.onClick=(e,els)=>{
-    if(els.length>0) showTopSKU(cs[els[0].index][0], d);
+    if(els.length>0) showTopSKU(cs[els[0].index][0], dKategori);
   };
   opt5.onHover=(e,els)=>{
     e.native.target.style.cursor=els.length>0?'pointer':'default';
