@@ -294,25 +294,33 @@ const LP={id:'LP',afterDatasetsDraw(chart){
   const ctx=chart.ctx;ctx.save();
   chart.data.datasets.forEach((ds,di)=>{
     const meta=chart.getDatasetMeta(di);if(meta.hidden)return;
+    const total=ds.data.reduce((a,b)=>a+(b||0),0);
     meta.data.forEach((el,i)=>{
       const v=ds.data[i];if(!v||v<=0)return;
       ctx.font='bold 11px DM Sans,sans-serif';
       ctx.textAlign='center';ctx.textBaseline='middle';
       const{x,y,base}=el.getProps(['x','y','base'],true);
       const isH=chart.options.indexAxis==='y';
+      let txt=v;
+      if(chart.canvas.id==='c4'||chart.canvas.id==='c5'){
+        const pct=total>0?Math.round((v/total)*100):0;
+        txt=v+' ('+pct+'%)';
+      }
       if(meta.type==='line'){
         ctx.fillStyle=ds.borderColor||'#2563eb';ctx.textBaseline='bottom';
-        const txt=v>=1000000?(v/1000000).toFixed(1)+'M':v>=1000?(v/1000).toFixed(0)+'K':v;
-        ctx.fillText(txt,x,y-8);
+        const ltxt=v>=1000000?(v/1000000).toFixed(1)+'M':v>=1000?(v/1000).toFixed(0)+'K':v;
+        ctx.fillText(ltxt,x,y-8);
       }else if(isH){
         ctx.fillStyle='#334155';
-        if((base-x)>18){ctx.fillText(v,x+(base-x)/2,y);}
-        else{ctx.textAlign='left';ctx.fillText(v,x+4,y);}
+        const bw=Math.abs(base-x);
+        const tw=ctx.measureText(txt).width;
+        if(bw>tw+10){ctx.fillText(txt,x+(base-x)/2,y);}
+        else{ctx.textAlign='left';ctx.fillText(txt,x+4,y);}
       }else{
         ctx.fillStyle='#334155';
         const bh=Math.abs(base-y);
-        if(bh>16){ctx.fillText(v,x,y+bh/2);}
-        else{ctx.textBaseline='bottom';ctx.fillText(v,x,y-3);}
+        if(bh>20){ctx.fillText(txt,x,y+bh/2);}
+        else{ctx.textBaseline='bottom';ctx.fillText(txt,x,y-3);}
       }
     });
   });ctx.restore();
@@ -670,6 +678,7 @@ async function renderMapChart(d) {
     };
   });
   const maxVal = chartData.length > 0 ? Math.max(...chartData.map(v => v.value)) : 100;
+  const totalReturnMap = chartData.reduce((a, c) => a + c.value, 0);
 
   dc('cMap');
   ch.cMap = echarts.init(document.getElementById('cMap'));
@@ -719,11 +728,14 @@ async function renderMapChart(d) {
         label: {
           show: true,
           formatter: function(params) {
-            return params.value ? params.value : '';
+            if (!params.value) return '';
+            const pct = totalReturnMap > 0 ? Math.round((params.value / totalReturnMap) * 100) : 0;
+            return params.value + '\n(' + pct + '%)';
           },
           color: '#0f172a',
           fontSize: 10,
-          fontWeight: 'bold'
+          fontWeight: 'bold',
+          lineHeight: 12
         },
         itemStyle: {
           areaColor: '#f1f5f9',
