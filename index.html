@@ -312,10 +312,14 @@ const LP={id:'LP',afterDatasetsDraw(chart){
         ctx.fillText(ltxt,x,y-8);
       }else if(isH){
         ctx.fillStyle='#334155';
-        const bw=Math.abs(base-x);
-        const tw=ctx.measureText(txt).width;
-        if(bw>tw+12){ctx.textAlign='right';ctx.fillText(txt,x-6,y);}
-        else{ctx.textAlign='left';ctx.fillText(txt,x+4,y);}
+        if(chart.canvas.id==='c3'){
+          ctx.textAlign='left';ctx.fillText(txt,x+4,y);
+        }else{
+          const bw=Math.abs(base-x);
+          const tw=ctx.measureText(txt).width;
+          if(bw>tw+12){ctx.textAlign='right';ctx.fillText(txt,x-6,y);}
+          else{ctx.textAlign='left';ctx.fillText(txt,x+4,y);}
+        }
       }else{
         ctx.fillStyle='#334155';
         const bh=Math.abs(base-y);
