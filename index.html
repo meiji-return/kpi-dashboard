@@ -631,11 +631,44 @@ async function renderMapChart(d) {
     if (r.lvl2_destination) {
       const p = r.lvl2_destination.toLowerCase();
       const mapped = MAP_PROV[p] || p.toUpperCase();
-      mapData[mapped] = (mapData[mapped] || 0) + 1;
+      
+      if (!mapData[mapped]) {
+        mapData[mapped] = { count: 0, value: 0, reasons: {}, tpls: {} };
+      }
+      
+      mapData[mapped].count += 1;
+      mapData[mapped].value += (parseFloat(r.price) || 0);
+      
+      if (r.qc_reason) {
+        mapData[mapped].reasons[r.qc_reason] = (mapData[mapped].reasons[r.qc_reason] || 0) + 1;
+      }
+      if (r.tpl) {
+        mapData[mapped].tpls[r.tpl] = (mapData[mapped].tpls[r.tpl] || 0) + 1;
+      }
     }
   });
 
-  const chartData = Object.keys(mapData).map(k => ({ name: k, value: mapData[k] }));
+  const chartData = Object.keys(mapData).map(k => {
+    const md = mapData[k];
+    let topReason = '-', maxR = 0;
+    for (const [res, count] of Object.entries(md.reasons)) {
+      if (count > maxR) { maxR = count; topReason = res; }
+    }
+    topReason = topReason.replace('Customer_', '').replace('Seller_', 'Seller: ');
+    
+    let topTpl = '-', maxT = 0;
+    for (const [tpl, count] of Object.entries(md.tpls)) {
+      if (count > maxT) { maxT = count; topTpl = tpl; }
+    }
+
+    return { 
+      name: k, 
+      value: md.count,
+      totalValue: md.value,
+      topReason: topReason,
+      topTpl: topTpl
+    };
+  });
   const maxVal = chartData.length > 0 ? Math.max(...chartData.map(v => v.value)) : 100;
 
   dc('cMap');
@@ -644,7 +677,26 @@ async function renderMapChart(d) {
   const option = {
     tooltip: {
       trigger: 'item',
-      formatter: '{b}<br/>Total Return: <b style="color:#dc2626">{c}</b>'
+      backgroundColor: 'rgba(255, 255, 255, 0.95)',
+      borderColor: '#e2e8f0',
+      borderWidth: 1,
+      textStyle: { color: '#0f172a' },
+      padding: 12,
+      formatter: function(params) {
+        if (!params.value) return `<div style="font-family:'DM Sans';font-size:13px;font-weight:600">${params.name}</div><div style="font-family:'DM Sans';color:#64748b;font-size:12px;margin-top:4px">Tidak ada data return</div>`;
+        const valRupiah = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(params.data.totalValue);
+        return `
+          <div style="font-family:'DM Sans'; min-width:180px;">
+            <strong style="font-size:14px; border-bottom:1px solid #e2e8f0; padding-bottom:6px; margin-bottom:8px; display:block; color:#0f172a;">${params.name}</strong>
+            <table style="width:100%; font-size:12px; border-spacing: 0;">
+              <tr><td style="color:#64748b; padding-bottom:6px;">Total Return</td><td style="text-align:right; font-weight:600; color:#dc2626; padding-bottom:6px;">${params.value} items</td></tr>
+              <tr><td style="color:#64748b; padding-bottom:6px;">Nilai Barang</td><td style="text-align:right; font-weight:600; padding-bottom:6px;">${valRupiah}</td></tr>
+              <tr><td style="color:#64748b; padding-bottom:6px;">Alasan Utama</td><td style="text-align:right; font-weight:500; padding-bottom:6px;">${params.data.topReason.length>15?params.data.topReason.substring(0,15)+'...':params.data.topReason}</td></tr>
+              <tr><td style="color:#64748b;">Kurir (3PL)</td><td style="text-align:right; font-weight:500;">${params.data.topTpl}</td></tr>
+            </table>
+          </div>
+        `;
+      }
     },
     visualMap: {
       left: 'right',
