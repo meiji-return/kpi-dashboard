@@ -200,8 +200,7 @@
   </div>
 
   <p class="slabel">distribusi</p>
-  <div class="cgrid3">
-    <div class="cbox"><p class="ctitle">Return per QC Reason</p><div style="position:relative;height:200px"><canvas id="c8"></canvas></div></div>
+  <div class="cgrid2">
     <div class="cbox"><p class="ctitle">Return per 3PL</p><div class="leg" id="leg6"></div><div style="position:relative;height:200px"><canvas id="c6"></canvas></div></div>
     <div class="cbox"><p class="ctitle">Return Type</p><div class="leg" id="leg7"></div><div style="position:relative;height:200px"><canvas id="c7"></canvas></div></div>
   </div>
@@ -324,7 +323,7 @@ const LP={id:'LP',afterDatasetsDraw(chart){
       const{x,y,base}=el.getProps(['x','y','base'],true);
       const isH=chart.options.indexAxis==='y';
       let txt=v;
-      if(chart.canvas.id==='c4'||chart.canvas.id==='c5'||chart.canvas.id==='c8'){
+      if(chart.canvas.id==='c4'||chart.canvas.id==='c5'){
         const pct=total>0?Math.round((v/total)*100):0;
         txt=v+' ('+pct+'%)';
       }
@@ -620,10 +619,6 @@ function renderCharts(d, dQC, dKategori){
   };
   opt5.plugins.tooltip = { callbacks: { label: function(context) { return context.raw + ' items (Klik untuk detail SKU)'; } } };
   dc('c5');ch.c5=new Chart(document.getElementById('c5'),{type:'bar',plugins:[LP],data:{labels:cs.map(e=>e[0].length>14?e[0].substring(0,14)+'\u2026':e[0]),datasets:[{label:'Return',data:cs.map(e=>e[1]),backgroundColor:'rgba(217,119,6,.4)',borderColor:'#d97706',borderWidth:1,borderRadius:4}]},options:opt5});
-
-  const qrC={};d.forEach(r=>{if(r.qc_reason)qrC[r.qc_reason]=(qrC[r.qc_reason]||0)+1;});
-  const qrS=Object.entries(qrC).sort((a,b)=>b[1]-a[1]).slice(0,8);
-  dc('c8');ch.c8=new Chart(document.getElementById('c8'),{type:'bar',plugins:[LP],data:{labels:qrS.map(e=>{let l=e[0].replace('Customer_','').replace('Seller_','Seller: ').replace('3PL_','3PL: ');return l.length>14?l.substring(0,14)+'\u2026':l;}),datasets:[{label:'Return',data:qrS.map(e=>e[1]),backgroundColor:'rgba(239,68,68,.4)',borderColor:'#ef4444',borderWidth:1,borderRadius:4}]},options:BO()});
 
   const tp={};d.forEach(r=>{if(r.tpl)tp[r.tpl]=(tp[r.tpl]||0)+1;});
   const tl=Object.keys(tp),tv=Object.values(tp),ttot=tv.reduce((a,b)=>a+b,0);
