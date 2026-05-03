@@ -290,6 +290,27 @@ const MAP_PROV = {
   'papua barat': 'IRIAN JAYA BARAT'
 };
 
+const M_ORDER = {"jan":1,"feb":2,"mar":3,"apr":4,"may":5,"jun":6,"jul":7,"aug":8,"sep":9,"oct":10,"nov":11,"dec":12,"januari":1,"februari":2,"maret":3,"mei":5,"juni":6,"juli":7,"agustus":8,"september":9,"oktober":10,"november":11,"desember":12};
+function sortMonthStr(a,b){
+  const getVal = (s) => {
+    s = s.toLowerCase();
+    let y = s.match(/\d{4}/);
+    if (!y) {
+      let y2 = s.match(/\b\d{2}\b/);
+      y = y2 ? parseInt(y2[0]) + 2000 : 0;
+    } else {
+      y = parseInt(y[0]);
+    }
+    let m = 99;
+    for(const k in M_ORDER) { if(s.includes(k)) { m = M_ORDER[k]; break; } }
+    return y * 100 + m;
+  };
+  const va = getVal(a), vb = getVal(b);
+  if(va % 100 !== 99 && vb % 100 !== 99) return va - vb;
+  return a.localeCompare(b);
+}
+
+
 const LP={id:'LP',afterDatasetsDraw(chart){
   const ctx=chart.ctx;ctx.save();
   chart.data.datasets.forEach((ds,di)=>{
@@ -400,7 +421,7 @@ function renderOptionsMS(id,options){
 }
 
 function populateFilters(returns){
-  const bulan=[...new Set(returns.map(r=>r.rts_month).filter(Boolean))].sort();
+  const bulan=[...new Set(returns.map(r=>r.rts_month).filter(Boolean))].sort(sortMonthStr);
   const whs=[...new Set(returns.map(r=>r.warehouse_origin).filter(Boolean))].sort();
   const cats=[...new Set(returns.map(r=>r.category_1).filter(Boolean))].sort();
   const qcReasons=[...new Set(returns.map(r=>r.qc_reason).filter(Boolean))].sort();
@@ -498,7 +519,7 @@ function renderShippedChart(returns,shipped){
   const months=[...new Set([
     ...shipped.map(r=>r.rts_month),
     ...returns.map(r=>r.rts_month)
-  ].filter(Boolean))].sort();
+  ].filter(Boolean))].sort(sortMonthStr);
   const whs=[...new Set([
     ...shipped.map(r=>r.warehouse_origin),
     ...returns.map(r=>r.warehouse_origin)
@@ -565,7 +586,7 @@ function renderCharts(d, dQC, dKategori){
   const rr={};dQC.forEach(r=>{if(r.qc_reason)rr[r.qc_reason]=(rr[r.qc_reason]||0)+1;});
   const rs=Object.entries(rr).sort((a,b)=>b[1]-a[1]).slice(0,8);
   const topQcReasons = rs.map(e=>e[0]);
-  const qcMonths = [...new Set(dQC.map(r=>r.rts_month).filter(Boolean))].sort();
+  const qcMonths = [...new Set(dQC.map(r=>r.rts_month).filter(Boolean))].sort(sortMonthStr);
   const qcColors = ['rgba(30,58,138,0.9)', 'rgba(248,113,113,0.9)', 'rgba(16,185,129,0.9)', 'rgba(245,158,11,0.9)', 'rgba(139,92,246,0.9)', 'rgba(6,182,212,0.9)'];
   const qcBorders = ['#1e3a8a', '#f87171', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4'];
   const qcDatasets = qcMonths.map((m, i) => {
