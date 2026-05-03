@@ -504,13 +504,48 @@ function renderKPI(d,s){
   const returnRate=totalShipped>0?((tot/totalShipped)*100).toFixed(2):'-';
   const kpiHit=d.filter(r=>r.kpi_calculation==='1').length;
 
+  let sMomHtml = '', rMomHtml = '', kMomHtml = '';
+  const bFValues = getMSValues('bF');
+  if (bFValues.length === 1 && bFValues[0] !== 'all') {
+    const currentMonth = bFValues[0];
+    const allMonths = [...new Set([...allShipped.map(r=>r.rts_month), ...allReturns.map(r=>r.rts_month)].filter(Boolean))].sort(sortMonthStr);
+    const currIdx = allMonths.indexOf(currentMonth);
+    if (currIdx > 0) {
+      const prevMonth = allMonths[currIdx - 1];
+      const w=getMSValues('wF'), c=getMSValues('cF'), q=getMSValues('qF'), k=getMSValues('kF');
+      const prevR = allReturns.filter(r=>{
+        if(r.rts_month !== prevMonth) return false;
+        if(!w.includes('all')&&!w.includes(r.warehouse_origin))return false;
+        if(!c.includes('all')&&!c.includes(r.category_1))return false;
+        if(!q.includes('all')&&!q.includes(r.qc_result))return false;
+        if(!k.includes('all')&&!k.some(kv=>(kv==='1'&&r.kpi_calculation==='1')||(kv==='blank'&&r.kpi_calculation!=='1')))return false;
+        return true;
+      });
+      const prevS = allShipped.filter(r => (r.rts_month === prevMonth) && (w.includes('all') || w.includes(r.warehouse_origin)));
+      
+      const pTot = prevR.length;
+      const pShipped = prevS.reduce((a,r)=>a+(r.total_shipped||0),0);
+      const pKpiHit = prevR.filter(r=>r.kpi_calculation==='1').length;
+      
+      const calcDiff = (curr, prev, isBadIfHigh) => {
+        if(prev===0) return curr>0?`<span style="margin-left:8px; color:${isBadIfHigh?'var(--red)':'var(--green)'}; font-weight:600">▲ 100% MoM</span>`:'';
+        const pct = ((curr-prev)/prev)*100;
+        if (pct === 0) return `<span style="margin-left:8px; color:var(--text3); font-weight:600">= 0% MoM</span>`;
+        const color = pct>0?(isBadIfHigh?'var(--red)':'var(--green)'):(isBadIfHigh?'var(--green)':'var(--red)');
+        const sign = pct>0?'▲':'▼';
+        return `<span style="margin-left:8px; color:${color}; font-weight:600">${sign} ${Math.abs(pct).toFixed(1)}% MoM</span>`;
+      };
+      
+      sMomHtml = calcDiff(totalShipped, pShipped, false);
+      rMomHtml = calcDiff(tot, pTot, true);
+      kMomHtml = calcDiff(kpiHit, pKpiHit, false);
+    }
+  }
+
   document.getElementById('kgrid').innerHTML=`
-    <div class="kcard blue"><p class="klbl">Total Shipped</p><p class="kval">${totalShipped>0?totalShipped.toLocaleString('id'):'-'}</p><p class="ksub neutral">items</p></div>
-    <div class="kcard red"><p class="klbl">Total Return</p><p class="kval">${tot}</p><p class="ksub up">Rate: ${returnRate}%</p></div>
-    <!-- <div class="kcard green"><p class="klbl">QC Pass</p><p class="kval">${pass}</p><p class="ksub dn">${tot>0?((pass/tot)*100).toFixed(1):0}%</p></div>
-    <div class="kcard red"><p class="klbl">QC Fail</p><p class="kval">${fail}</p><p class="ksub ${parseFloat(fr)>50?'up':'dn'}">${fr}%</p></div>
-    <div class="kcard amber"><p class="klbl">Scrap</p><p class="kval">${scrap}</p><p class="ksub up">${tot>0?((scrap/tot)*100).toFixed(1):0}%</p></div> -->
-    <div class="kcard purple"><p class="klbl">Hit KPI</p><p class="kval">${kpiHit}</p><p class="ksub neutral">${tot>0?((kpiHit/tot)*100).toFixed(1):0}%</p></div>`;
+    <div class="kcard blue"><p class="klbl">Total Shipped</p><p class="kval">${totalShipped>0?totalShipped.toLocaleString('id'):'-'}</p><p class="ksub neutral" style="display:flex;align-items:center;">items${sMomHtml}</p></div>
+    <div class="kcard red"><p class="klbl">Total Return</p><p class="kval">${tot}</p><p class="ksub up" style="display:flex;align-items:center;">Rate: ${returnRate}%${rMomHtml}</p></div>
+    <div class="kcard purple"><p class="klbl">Hit KPI</p><p class="kval">${kpiHit}</p><p class="ksub neutral" style="display:flex;align-items:center;">${tot>0?((kpiHit/tot)*100).toFixed(1):0}%${kMomHtml}</p></div>`;
 }
 
 function renderShippedChart(returns,shipped){
