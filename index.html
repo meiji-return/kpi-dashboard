@@ -814,15 +814,70 @@ function showTopKota(province, allFilteredData) {
   });
   const sortedKota = Object.entries(kotaCount).sort((a,b) => b[1] - a[1]).slice(0, 10);
   document.getElementById('modalTitle').textContent = `Top 10 Kota Return: ${province}`;
-  const listHtml = sortedKota.map((s, i) => `
-    <li class="sku-item">
-      <span class="sku-rank">#${i+1}</span>
-      <span class="sku-name" style="text-transform: capitalize;">${s[0].toLowerCase()}</span>
-      <span class="sku-count">${s[1]} return</span>
+  
+  const listHtml = sortedKota.map((s, i) => {
+    const kotaName = s[0];
+    const kotaTotal = s[1];
+    
+    const kotaData = provData.filter(r => (r.lvl3_destination || 'Unknown Kota') === kotaName);
+    
+    const qcCount = {};
+    const tplCount = {};
+    const catCount = {};
+    
+    kotaData.forEach(r => {
+      if (r.qc_reason) qcCount[r.qc_reason] = (qcCount[r.qc_reason] || 0) + 1;
+      if (r.tpl) tplCount[r.tpl] = (tplCount[r.tpl] || 0) + 1;
+      if (r.category_1) catCount[r.category_1] = (catCount[r.category_1] || 0) + 1;
+    });
+    
+    const qcHtml = Object.entries(qcCount).sort((a,b)=>b[1]-a[1]).map(e => `<div style="display:flex;justify-content:space-between;margin-bottom:4px;font-size:10.5px"><span style="color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-right:8px" title="${e[0]}">${e[0].replace('Customer_','').replace('Seller_','Seller: ')}</span><b style="color:var(--text)">${e[1]}</b></div>`).join('');
+    const tplHtml = Object.entries(tplCount).sort((a,b)=>b[1]-a[1]).map(e => `<div style="display:flex;justify-content:space-between;margin-bottom:4px;font-size:10.5px"><span style="color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-right:8px" title="${e[0]}">${e[0]}</span><b style="color:var(--text)">${e[1]}</b></div>`).join('');
+    const catHtml = Object.entries(catCount).sort((a,b)=>b[1]-a[1]).map(e => `<div style="display:flex;justify-content:space-between;margin-bottom:4px;font-size:10.5px"><span style="color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-right:8px" title="${e[0]}">${e[0]}</span><b style="color:var(--text)">${e[1]}</b></div>`).join('');
+
+    return `
+    <li class="sku-item" style="flex-direction:column; align-items:stretch; cursor:pointer; padding:14px 8px; border-radius:8px; transition:background 0.2s;" onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background='transparent'" onclick="toggleKotaDetail(${i})">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <div style="display:flex; align-items:center; gap:16px; flex:1">
+          <span class="sku-rank">#${i+1}</span>
+          <div style="display:flex; flex-direction:column; gap:2px;">
+            <span class="sku-name" style="text-transform: capitalize; font-size:14px;">${kotaName.toLowerCase()}</span>
+            <span style="font-size:10px; color:var(--blue); font-weight:500">(klik untuk detail)</span>
+          </div>
+        </div>
+        <span class="sku-count">${kotaTotal} return</span>
+      </div>
+      
+      <div id="kota-detail-${i}" style="display:none; margin-top:16px; padding:12px; background:var(--bg2); border:1px solid var(--border); border-radius:8px; cursor:default; box-shadow:0 1px 2px rgba(0,0,0,0.05)" onclick="event.stopPropagation()">
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px;">
+          <div style="max-height:160px; overflow-y:auto; padding-right:4px;">
+            <strong style="color:var(--text); font-size:11px; border-bottom:1px solid var(--border); padding-bottom:6px; margin-bottom:8px; display:block;">QC Reason</strong>
+            ${qcHtml}
+          </div>
+          <div style="max-height:160px; overflow-y:auto; padding-right:4px;">
+            <strong style="color:var(--text); font-size:11px; border-bottom:1px solid var(--border); padding-bottom:6px; margin-bottom:8px; display:block;">Kurir (3PL)</strong>
+            ${tplHtml}
+          </div>
+          <div style="max-height:160px; overflow-y:auto; padding-right:4px;">
+            <strong style="color:var(--text); font-size:11px; border-bottom:1px solid var(--border); padding-bottom:6px; margin-bottom:8px; display:block;">Kategori</strong>
+            ${catHtml}
+          </div>
+        </div>
+      </div>
     </li>
-  `).join('');
+  `}).join('');
+  
   document.getElementById('modalList').innerHTML = listHtml || '<li class="sku-item"><span class="sku-name">Tidak ada data kota</span></li>';
   document.getElementById('skuModal').classList.add('active');
+}
+
+function toggleKotaDetail(idx) {
+  const el = document.getElementById('kota-detail-' + idx);
+  if (el.style.display === 'none') {
+    el.style.display = 'block';
+  } else {
+    el.style.display = 'none';
+  }
 }
 
 function closeModal() {
