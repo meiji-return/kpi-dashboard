@@ -314,7 +314,7 @@ const LP={id:'LP',afterDatasetsDraw(chart){
         ctx.fillStyle='#334155';
         const bw=Math.abs(base-x);
         const tw=ctx.measureText(txt).width;
-        if(bw>tw+10){ctx.fillText(txt,x+(base-x)/2,y);}
+        if(bw>tw+12){ctx.textAlign='right';ctx.fillText(txt,x-6,y);}
         else{ctx.textAlign='left';ctx.fillText(txt,x+4,y);}
       }else{
         ctx.fillStyle='#334155';
