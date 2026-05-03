@@ -185,8 +185,8 @@
   <p class="slabel">persebaran geografis</p>
   <div class="cgrid2">
     <div class="cbox full">
-      <p class="ctitle">Peta Return per Provinsi (Choropleth Map)</p>
-      <div id="cMap" style="width:100%; height:450px; position:relative;"></div>
+      <p class="ctitle">Peta Return per Provinsi <span style="font-size:10px;font-weight:normal;color:var(--text3)">(Klik provinsi untuk detail Kota)</span></p>
+      <div id="cMap" style="width:100%; height:450px; position:relative; cursor:pointer;"></div>
     </div>
   </div>
 
@@ -243,6 +243,43 @@ const OC_COL={scrap:'#dc2626',return_to_warehouse:'#16a34a',return_to_customer:'
 const TPL_COL=['#2563eb','#16a34a','#d97706','#9333ea','#dc2626','#0891b2'];
 const WH_COLORS=['#2563eb','#16a34a','#d97706','#9333ea','#dc2626','#0891b2','#ea580c'];
 let ch={}, allReturns=[], allShipped=[];
+
+const MAP_PROV = {
+  'di yogyakarta': 'DAERAH ISTIMEWA YOGYAKARTA',
+  'banten': 'PROBANTEN',
+  'nanggroe aceh darussalam (nad)': 'DI. ACEH',
+  'nusa tenggara barat (ntb)': 'NUSATENGGARA BARAT',
+  'nusa tenggara timur (ntt)': 'NUSA TENGGARA TIMUR',
+  'kalimantan utara': 'KALIMANTAN TIMUR',
+  'kepulauan riau': 'RIAU',
+  'dki jakarta': 'DKI JAKARTA',
+  'jawa barat': 'JAWA BARAT',
+  'jawa tengah': 'JAWA TENGAH',
+  'jawa timur': 'JAWA TIMUR',
+  'bali': 'BALI',
+  'sumatera utara': 'SUMATERA UTARA',
+  'sumatera barat': 'SUMATERA BARAT',
+  'sumatera selatan': 'SUMATERA SELATAN',
+  'riau': 'RIAU',
+  'kepulauan bangka belitung': 'BANGKA BELITUNG',
+  'bangka belitung': 'BANGKA BELITUNG',
+  'lampung': 'LAMPUNG',
+  'bengkulu': 'BENGKULU',
+  'jambi': 'JAMBI',
+  'kalimantan barat': 'KALIMANTAN BARAT',
+  'kalimantan selatan': 'KALIMANTAN SELATAN',
+  'kalimantan tengah': 'KALIMANTAN TENGAH',
+  'kalimantan timur': 'KALIMANTAN TIMUR',
+  'sulawesi selatan': 'SULAWESI SELATAN',
+  'sulawesi tengah': 'SULAWESI TENGAH',
+  'sulawesi tenggara': 'SULAWESI TENGGARA',
+  'sulawesi utara': 'SULAWESI UTARA',
+  'gorontalo': 'GORONTALO',
+  'maluku': 'MALUKU',
+  'maluku utara': 'MALUKU UTARA',
+  'papua': 'IRIAN JAYA TIMUR',
+  'papua barat': 'IRIAN JAYA BARAT'
+};
 
 const LP={id:'LP',afterDatasetsDraw(chart){
   const ctx=chart.ctx;ctx.save();
@@ -580,49 +617,11 @@ async function renderMapChart(d) {
     }
   }
 
-  // Mapping nama provinsi dari data ke nama yang ada di GeoJSON
-  const mapProv = {
-    'di yogyakarta': 'DAERAH ISTIMEWA YOGYAKARTA',
-    'banten': 'PROBANTEN',
-    'nanggroe aceh darussalam (nad)': 'DI. ACEH',
-    'nusa tenggara barat (ntb)': 'NUSATENGGARA BARAT',
-    'nusa tenggara timur (ntt)': 'NUSA TENGGARA TIMUR',
-    'kalimantan utara': 'KALIMANTAN TIMUR', // group Kaltara into Kaltim
-    'kepulauan riau': 'RIAU', // group Kepri into Riau
-    'dki jakarta': 'DKI JAKARTA',
-    'jawa barat': 'JAWA BARAT',
-    'jawa tengah': 'JAWA TENGAH',
-    'jawa timur': 'JAWA TIMUR',
-    'bali': 'BALI',
-    'sumatera utara': 'SUMATERA UTARA',
-    'sumatera barat': 'SUMATERA BARAT',
-    'sumatera selatan': 'SUMATERA SELATAN',
-    'riau': 'RIAU',
-    'kepulauan bangka belitung': 'BANGKA BELITUNG',
-    'bangka belitung': 'BANGKA BELITUNG',
-    'lampung': 'LAMPUNG',
-    'bengkulu': 'BENGKULU',
-    'jambi': 'JAMBI',
-    'kalimantan barat': 'KALIMANTAN BARAT',
-    'kalimantan selatan': 'KALIMANTAN SELATAN',
-    'kalimantan tengah': 'KALIMANTAN TENGAH',
-    'kalimantan timur': 'KALIMANTAN TIMUR',
-    'sulawesi selatan': 'SULAWESI SELATAN',
-    'sulawesi tengah': 'SULAWESI TENGAH',
-    'sulawesi tenggara': 'SULAWESI TENGGARA',
-    'sulawesi utara': 'SULAWESI UTARA',
-    'gorontalo': 'GORONTALO',
-    'maluku': 'MALUKU',
-    'maluku utara': 'MALUKU UTARA',
-    'papua': 'IRIAN JAYA TIMUR',
-    'papua barat': 'IRIAN JAYA BARAT'
-  };
-
   const mapData = {};
   d.forEach(r => {
     if (r.lvl2_destination) {
       const p = r.lvl2_destination.toLowerCase();
-      const mapped = mapProv[p] || p.toUpperCase();
+      const mapped = MAP_PROV[p] || p.toUpperCase();
       mapData[mapped] = (mapData[mapped] || 0) + 1;
     }
   });
@@ -679,6 +678,13 @@ async function renderMapChart(d) {
   };
 
   ch.cMap.setOption(option);
+
+  ch.cMap.off('click'); // remove previous events if any
+  ch.cMap.on('click', function (params) {
+    if (params.name) {
+      showTopKota(params.name, d);
+    }
+  });
 }
 
 function renderTable(d,s){
@@ -729,6 +735,32 @@ function showTopSKU(category, allFilteredData) {
     </li>
   `).join('');
   document.getElementById('modalList').innerHTML = listHtml || '<li class="sku-item"><span class="sku-name">Tidak ada data SKU</span></li>';
+  document.getElementById('skuModal').classList.add('active');
+}
+
+function showTopKota(province, allFilteredData) {
+  const provData = allFilteredData.filter(r => {
+    if (!r.lvl2_destination) return false;
+    const p = r.lvl2_destination.toLowerCase();
+    const mapped = MAP_PROV[p] || p.toUpperCase();
+    return mapped === province;
+  });
+  
+  const kotaCount = {};
+  provData.forEach(r => {
+    const kota = r.lvl3_destination || 'Unknown Kota';
+    kotaCount[kota] = (kotaCount[kota] || 0) + 1;
+  });
+  const sortedKota = Object.entries(kotaCount).sort((a,b) => b[1] - a[1]).slice(0, 10);
+  document.getElementById('modalTitle').textContent = `Top 10 Kota Return: ${province}`;
+  const listHtml = sortedKota.map((s, i) => `
+    <li class="sku-item">
+      <span class="sku-rank">#${i+1}</span>
+      <span class="sku-name" style="text-transform: capitalize;">${s[0].toLowerCase()}</span>
+      <span class="sku-count">${s[1]} return</span>
+    </li>
+  `).join('');
+  document.getElementById('modalList').innerHTML = listHtml || '<li class="sku-item"><span class="sku-name">Tidak ada data kota</span></li>';
   document.getElementById('skuModal').classList.add('active');
 }
 
