@@ -6,6 +6,7 @@
 <title>KPI Return & Logistics Dashboard</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
 <style>
   :root{--bg:#f8fafc;--bg2:#ffffff;--bg3:#f1f5f9;--border:#e2e8f0;--border2:#cbd5e1;--text:#0f172a;--text2:#475569;--text3:#64748b;--green:#16a34a;--red:#dc2626;--blue:#2563eb;--amber:#d97706;--purple:#9333ea;--cyan:#0891b2;}
   *{box-sizing:border-box;margin:0;padding:0}
@@ -178,6 +179,14 @@
         </div>
       </div>
       <div style="position:relative;height:230px"><canvas id="c3"></canvas></div>
+    </div>
+  </div>
+
+  <p class="slabel">persebaran geografis</p>
+  <div class="cgrid2">
+    <div class="cbox full">
+      <p class="ctitle">Peta Return per Provinsi (Choropleth Map)</p>
+      <div id="cMap" style="width:100%; height:450px; position:relative;"></div>
     </div>
   </div>
 
@@ -374,7 +383,13 @@ function getFiltered(){
   return filterDataByBulan('bF');
 }
 
-function dc(k){if(ch[k]){ch[k].destroy();ch[k]=null;}}
+function dc(k){
+  if(ch[k]){
+    if(typeof ch[k].dispose === 'function') ch[k].dispose(); // for ECharts
+    else ch[k].destroy(); // for Chart.js
+    ch[k]=null;
+  }
+}
 
 function applyFilters(){
   const{returns:d,shipped:s}=getFiltered();
@@ -395,6 +410,7 @@ function applyFilters(){
   }
   
   renderCharts(d, dQC, dKategori);
+  renderMapChart(d);
   
   renderTable(d,s);
 }
@@ -536,6 +552,116 @@ function renderCharts(d, dQC, dKategori){
   const rtcols=['#0891b2','#d97706','#9333ea'];
   document.getElementById('leg7').innerHTML=rtl.map((l,i)=>`<span><span class="legdot" style="background:${rtcols[i%rtcols.length]}"></span>${l} ${Math.round(rtv[i]/rttot*100)}%</span>`).join('');
   dc('c7');ch.c7=new Chart(document.getElementById('c7'),{type:'doughnut',plugins:[DLP],data:{labels:rtl,datasets:[{data:rtv,backgroundColor:rtcols.map(c=>c+'44'),borderColor:rtcols,borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,cutout:'62%',plugins:{legend:{display:false}}}});
+}
+
+let isMapRegistered = false;
+async function renderMapChart(d) {
+  if (!isMapRegistered) {
+    try {
+      // Menampilkan loading indikator pada map container
+      document.getElementById('cMap').innerHTML = '<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-family:\'DM Mono\',monospace;font-size:12px;color:#64748b;">Memuat peta Indonesia...</div>';
+      const res = await fetch('https://raw.githubusercontent.com/superpikar/indonesia-geojson/master/indonesia-province-simple.json');
+      const geoJson = await res.json();
+      echarts.registerMap('ID', geoJson);
+      isMapRegistered = true;
+      document.getElementById('cMap').innerHTML = ''; // bersihkan loading
+    } catch(e) {
+      console.error('Failed to load geojson', e);
+      document.getElementById('cMap').innerHTML = '<div style="text-align:center;padding:20px;color:red;">Gagal memuat peta</div>';
+      return;
+    }
+  }
+
+  // Mapping nama provinsi dari data ke nama yang ada di GeoJSON
+  const mapProv = {
+    'di yogyakarta': 'DAERAH ISTIMEWA YOGYAKARTA',
+    'banten': 'PROBANTEN',
+    'nanggroe aceh darussalam (nad)': 'DI. ACEH',
+    'nusa tenggara barat (ntb)': 'NUSATENGGARA BARAT',
+    'nusa tenggara timur (ntt)': 'NUSA TENGGARA TIMUR',
+    'kalimantan utara': 'KALIMANTAN TIMUR', // group Kaltara into Kaltim
+    'kepulauan riau': 'RIAU', // group Kepri into Riau
+    'dki jakarta': 'DKI JAKARTA',
+    'jawa barat': 'JAWA BARAT',
+    'jawa tengah': 'JAWA TENGAH',
+    'jawa timur': 'JAWA TIMUR',
+    'bali': 'BALI',
+    'sumatera utara': 'SUMATERA UTARA',
+    'sumatera barat': 'SUMATERA BARAT',
+    'sumatera selatan': 'SUMATERA SELATAN',
+    'riau': 'RIAU',
+    'kepulauan bangka belitung': 'BANGKA BELITUNG',
+    'bangka belitung': 'BANGKA BELITUNG',
+    'lampung': 'LAMPUNG',
+    'bengkulu': 'BENGKULU',
+    'jambi': 'JAMBI',
+    'kalimantan barat': 'KALIMANTAN BARAT',
+    'kalimantan selatan': 'KALIMANTAN SELATAN',
+    'kalimantan tengah': 'KALIMANTAN TENGAH',
+    'kalimantan timur': 'KALIMANTAN TIMUR',
+    'sulawesi selatan': 'SULAWESI SELATAN',
+    'sulawesi tengah': 'SULAWESI TENGAH',
+    'sulawesi tenggara': 'SULAWESI TENGGARA',
+    'sulawesi utara': 'SULAWESI UTARA',
+    'gorontalo': 'GORONTALO',
+    'maluku': 'MALUKU',
+    'maluku utara': 'MALUKU UTARA',
+    'papua': 'IRIAN JAYA TIMUR',
+    'papua barat': 'IRIAN JAYA BARAT'
+  };
+
+  const mapData = {};
+  d.forEach(r => {
+    if (r.lvl2_destination) {
+      const p = r.lvl2_destination.toLowerCase();
+      const mapped = mapProv[p] || p.toUpperCase();
+      mapData[mapped] = (mapData[mapped] || 0) + 1;
+    }
+  });
+
+  const chartData = Object.keys(mapData).map(k => ({ name: k, value: mapData[k] }));
+  const maxVal = chartData.length > 0 ? Math.max(...chartData.map(v => v.value)) : 100;
+
+  dc('cMap');
+  ch.cMap = echarts.init(document.getElementById('cMap'));
+
+  const option = {
+    tooltip: {
+      trigger: 'item',
+      formatter: '{b}<br/>Total Return: <b style="color:#dc2626">{c}</b>'
+    },
+    visualMap: {
+      left: 'right',
+      top: 'bottom',
+      min: 0,
+      max: maxVal,
+      inRange: {
+        color: ['#fef2f2', '#fca5a5', '#dc2626', '#991b1b']
+      },
+      text: ['Tinggi', 'Rendah'],
+      calculable: true,
+      textStyle: { color: '#64748b', fontSize: 11, fontFamily: 'DM Sans' }
+    },
+    series: [
+      {
+        name: 'Return per Provinsi',
+        type: 'map',
+        map: 'ID',
+        roam: true,
+        itemStyle: {
+          areaColor: '#f1f5f9',
+          borderColor: '#cbd5e1'
+        },
+        emphasis: {
+          label: { show: true, color: '#0f172a' },
+          itemStyle: { areaColor: '#f87171' }
+        },
+        data: chartData
+      }
+    ]
+  };
+
+  ch.cMap.setOption(option);
 }
 
 function renderTable(d,s){
